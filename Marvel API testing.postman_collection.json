@@ -1,0 +1,358 @@
+{
+	"info": {
+		"_postman_id": "2071db06-45ed-4a01-86f4-c4ae0be876a5",
+		"name": "Marvel API testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get all comics",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const cryptoJS = require(\"crypto-js\");\r",
+							"\r",
+							"const ts = new Date().getTime();\r",
+							"pm.environment.set('ts',ts);\r",
+							"\r",
+							"const pubKey = pm.environment.get('publicKey');\r",
+							"const priKey = pm.environment.get('privateKey');\r",
+							"\r",
+							"const hash = cryptoJS.MD5(ts+priKey+pubKey).toString();\r",
+							"\r",
+							"pm.environment.set('hash',hash);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const characters = [\"Nightcrawler\",\"Wolverine\",\"Black Widow\",\"Iron Man\"]\r",
+							"\r",
+							"pm.environment.set('characters',JSON.stringify(characters));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://gateway.marvel.com:443/v1/public/comics?ts={{ts}}&apikey={{publicKey}}&hash={{hash}}",
+					"protocol": "https",
+					"host": [
+						"gateway",
+						"marvel",
+						"com"
+					],
+					"port": "443",
+					"path": [
+						"v1",
+						"public",
+						"comics"
+					],
+					"query": [
+						{
+							"key": "ts",
+							"value": "{{ts}}"
+						},
+						{
+							"key": "apikey",
+							"value": "{{publicKey}}"
+						},
+						{
+							"key": "hash",
+							"value": "{{hash}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get character by name (reset list run)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const characterArray = JSON.parse(pm.environment.get('characters'));\r",
+							"let currentCharacter = pm.environment.get('currentCharacter');\r",
+							"\r",
+							"var currentPos = characterArray.findIndex( (char) => {\r",
+							"    return char == currentCharacter\r",
+							"})\r",
+							"\r",
+							"console.log('current character is: '+currentCharacter);\r",
+							"console.log('current position is: '+currentPos);\r",
+							"\r",
+							"currentPos < characterArray.length-1 ? currentPos ++ : currentPos = 0;\r",
+							"\r",
+							"pm.environment.set('currentCharacter',characterArray[currentPos]);\r",
+							"\r",
+							"console.log('current character is: '+pm.environment.get('currentCharacter'));\r",
+							"console.log('current position is: '+currentPos);\r",
+							"\r",
+							"pm.environment.set('nextRequest',\r",
+							"'c1dd1290-5391-427e-a8ab-be0d42d63515');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://gateway.marvel.com:443/v1/public/characters?name={{currentCharacter}}&ts={{ts}}&apikey={{publicKey}}&hash={{hash}}",
+					"protocol": "https",
+					"host": [
+						"gateway",
+						"marvel",
+						"com"
+					],
+					"port": "443",
+					"path": [
+						"v1",
+						"public",
+						"characters"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "{{currentCharacter}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{ts}}"
+						},
+						{
+							"key": "apikey",
+							"value": "{{publicKey}}"
+						},
+						{
+							"key": "hash",
+							"value": "{{hash}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get comic from name",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const jsonData = pm.response.json();\r",
+							"const title = pm.environment.get('title');\r",
+							"const charsData = jsonData.data.results\r",
+							"\r",
+							"// test to see if data comes through\r",
+							"pm.test(title+' is valid', function(){\r",
+							"    pm.expect(charsData).to.not.be.empty\r",
+							"})\r",
+							"\r",
+							"\r",
+							"// get an array of all characters returned\r",
+							"const allChars = charsData.flatMap(comic => {\r",
+							"    return comic.characters.items.map( obj => {\r",
+							"        return obj.name;\r",
+							"    })\r",
+							"})\r",
+							"\r",
+							"// filter down to unique characters\r",
+							"const unique = (value, index, self) => {\r",
+							"    return self.indexOf(value) === index\r",
+							"}\r",
+							"\r",
+							"const uniqueChars = allChars.filter(unique);\r",
+							"\r",
+							"// add list of characters to environment\r",
+							"pm.environment.set('characters',JSON.stringify(uniqueChars));\r",
+							"pm.environment.set('currentCharacter',uniqueChars[0]);\r",
+							"\r",
+							"// reset nextRequest value to run list of characters\r",
+							"pm.environment.set('nextRequest',\r",
+							"'c1dd1290-5391-427e-a8ab-be0d42d63515');"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://gateway.marvel.com:443/v1/public/comics?titleStartsWith={{title}}&ts={{ts}}&apikey={{publicKey}}&hash={{hash}}&limit={{limit}}",
+					"protocol": "https",
+					"host": [
+						"gateway",
+						"marvel",
+						"com"
+					],
+					"port": "443",
+					"path": [
+						"v1",
+						"public",
+						"comics"
+					],
+					"query": [
+						{
+							"key": "titleStartsWith",
+							"value": "{{title}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{ts}}"
+						},
+						{
+							"key": "apikey",
+							"value": "{{publicKey}}"
+						},
+						{
+							"key": "hash",
+							"value": "{{hash}}"
+						},
+						{
+							"key": "limit",
+							"value": "{{limit}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Run list of characters",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const jsonData = pm.response.json();\r",
+							"\r",
+							"let currentCharacter = pm.environment.get('currentCharacter');\r",
+							"const noComics = jsonData.data.results[0].comics.available;\r",
+							"\r",
+							"// test to make sure that character has come through correctly\r",
+							"pm.test(currentCharacter+\", assemble!\", function () {\r",
+							"    pm.expect(jsonData.data.results[0].name).to.eql(currentCharacter);\r",
+							"});\r",
+							"\r",
+							"// empty test to say how many comics character has been in\r",
+							"pm.test(currentCharacter+\" has appeared in \"+noComics+\" comic books\"+(noComics>999 ? '. Wowee! That\\'s a lot of comics!':''), function (){\r",
+							"\r",
+							"})\r",
+							"\r",
+							"\r",
+							"// iterate character in array\r",
+							"\r",
+							"const characterArray = JSON.parse(pm.environment.get('characters'));\r",
+							"\r",
+							"var currentPos = characterArray.findIndex( (char) => {\r",
+							"    return char == currentCharacter\r",
+							"})\r",
+							"\r",
+							"// iterate array or if at the end of the array, set nextRequest to null\r",
+							"currentPos < characterArray.length-1 ? currentPos ++ : pm.environment.set('nextRequest',null);\r",
+							"\r",
+							"// update currentCharacter environment variable to the next character\r",
+							"pm.environment.set('currentCharacter',characterArray[currentPos]);\r",
+							"\r",
+							"// next request set up\r",
+							"postman.setNextRequest(pm.environment.get('nextRequest'));\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://gateway.marvel.com:443/v1/public/characters?name={{currentCharacter}}&ts={{ts}}&apikey={{publicKey}}&hash={{hash}}",
+					"protocol": "https",
+					"host": [
+						"gateway",
+						"marvel",
+						"com"
+					],
+					"port": "443",
+					"path": [
+						"v1",
+						"public",
+						"characters"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "{{currentCharacter}}"
+						},
+						{
+							"key": "ts",
+							"value": "{{ts}}"
+						},
+						{
+							"key": "apikey",
+							"value": "{{publicKey}}"
+						},
+						{
+							"key": "hash",
+							"value": "{{hash}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "digest",
+		"digest": [
+			{
+				"key": "algorithm",
+				"value": "MD5",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
