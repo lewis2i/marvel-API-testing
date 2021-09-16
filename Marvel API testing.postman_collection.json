@@ -185,6 +185,25 @@
 						],
 						"type": "text/javascript"
 					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const cryptoJS = require(\"crypto-js\");\r",
+							"\r",
+							"const ts = new Date().getTime();\r",
+							"pm.environment.set('ts',ts);\r",
+							"\r",
+							"const pubKey = pm.environment.get('publicKey');\r",
+							"const priKey = pm.environment.get('privateKey');\r",
+							"\r",
+							"const hash = cryptoJS.MD5(ts+priKey+pubKey).toString();\r",
+							"\r",
+							"pm.environment.set('hash',hash);"
+						],
+						"type": "text/javascript"
+					}
 				}
 			],
 			"request": {
